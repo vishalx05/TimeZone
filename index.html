@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TimeZone Meeting Planner</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f0f0f0;
+    }
+    input, button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    .results {
+      margin-top: 20px;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🕓 Timezone Meeting Planner</h2>
+
+  <div id="inputs">
+    <input type="text" class="city" placeholder="Enter timezone (e.g. Asia/Kolkata)">
+    <input type="text" class="city" placeholder="Enter timezone (e.g. America/New_York)">
+  </div>
+
+  <button onclick="addCity()">Add Another Timezone</button>
+  <button onclick="findMeetings()">Find Meeting Time</button>
+
+  <div class="results" id="output"></div>
+
+  <script>
+    function addCity() {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "city";
+      input.placeholder = "Enter timezone (e.g. Europe/London)";
+      document.getElementById("inputs").appendChild(input);
+    }
+
+    function findMeetings() {
+      const timezones = Array.from(document.querySelectorAll(".city")).map(input => input.value.trim());
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+
+      if (timezones.length < 2 || timezones.some(tz => !tz)) {
+        output.innerHTML = "<p style='color:red;'>Please enter at least two valid timezones.</p>";
+        return;
+      }
+
+      // Generate available hours in UTC for each timezone
+      const availableUTC = timezones.map(tz => {
+        try {
+          let hours = [];
+          for (let h = 9; h <= 20; h++) {
+            const local = new Date();
+            local.setHours(h, 0, 0, 0);
+
+            const utc = new Date(local.toLocaleString("en-US", { timeZone: tz }));
+            utc.setSeconds(0, 0);
+            hours.push(utc.getUTCHours());
+          }
+          return new Set(hours);
+        } catch (err) {
+          console.error("Invalid timezone:", tz);
+          return new Set();
+        }
+      });
+
+      // Find common UTC hours
+      const commonHours = [...availableUTC.reduce((a, b) => new Set([...a].filter(x => b.has(x))))];
+
+      if (commonHours.length === 0) {
+        output.innerHTML = "<p style='color:red;'>No common time slot found.</p>";
+        return;
+      }
+
+      // Display times in local timezones
+      commonHours.sort((a, b) => a - b).forEach(hour => {
+        const block = document.createElement("div");
+        block.innerHTML = `<strong>UTC ${hour}:00</strong><ul>` +
+          timezones.map(tz => {
+            const utcTime = new Date(Date.UTC(2023, 0, 1, hour));
+            const localStr = utcTime.toLocaleTimeString("en-US", { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+            return `<li>${tz}: ${localStr}</li>`;
+          }).join("") +
+          "</ul><hr>";
+        output.appendChild(block);
+      });
+    }
+  </script>
+
+</body>
+</html>
